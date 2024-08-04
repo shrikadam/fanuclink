@@ -134,7 +134,7 @@ int main(int argc, char *argv[])
 
     printf("Client: Connecting...\n");
 
-    if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
+    if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) == 0)
     {
         printf("Client: Can't Connect to the Server\n");
         CLOSESOCKET(sockfd);
@@ -145,6 +145,7 @@ int main(int argc, char *argv[])
     }
     else
     {
+        printf("Client: Successfully conneted to the Server\n");
         str_cli(sockfd);
     }
 
