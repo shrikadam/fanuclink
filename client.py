@@ -4,6 +4,8 @@ def main():
     # Server details
     SERVER_HOST = '127.0.0.1'
     SERVER_PORT = 10000
+    cmd = "curpos"
+    cmd = cmd.strip() + "\n"
 
     # Create a socket object
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -14,11 +16,12 @@ def main():
         # Connect to the server
         client_socket.connect((SERVER_HOST, SERVER_PORT))
         print("Connected to server successfully")
-        resp = client_socket.recv(1024).decode('utf-8')
+        resp = client_socket.recv(1024).decode()
         print("Received message: " + resp)
         while True:
-            resp = client_socket.recv(1024).decode('utf-8')
-            print("Received message: " + resp)
+            client_socket.sendall(cmd.encode())
+            resp = client_socket.recv(1024).decode()
+            print("Received pose: " + resp)
     except ConnectionRefusedError:
         print("Connection failed. Make sure the server is running.")
     except KeyboardInterrupt:
