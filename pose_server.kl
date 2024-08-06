@@ -16,44 +16,56 @@ VAR
     cpose       : XYZWPR
 ------------------------------------------------------------------------------------------
 BEGIN 
+    -- Clear TP Screen
     WRITE(CHR(128), CHR(137))
     FORCE_SPMENU(TP_PANEL, SPI_TPUSER, 1)
     WRITE('Started TCP/IP Server Program...', CR)
-    -- -- Set the Server Port
+
+    -- Set the Server Port
     SET_VAR(entry, '*SYSTEM*', '%HOSTS_CFG[8].$SERVER_PORT', 10000, status)
     WRITE('Connecting to Client...', cr)
+
     -- Clean Start Server Tag
     MSG_DISCO('S8:', status)
     CLOSE FILE comm_file
+
     -- Connect to Client
     SET_FILE_ATR(comm_file, ATR_IA)
     MSG_CONNECT('S8:', status)
+
     IF status = 0 THEN
-        -- Open the Socket
+        -- Accept the Connection
         WRITE('Client Connection Accepted.', cr)
         OPEN FILE comm_file('rw', 'S8:')
         WRITE comm_file ('Hello from the Robot!')
+
+        -- Publish TCP Cartesian Pose Continuously
         WHILE TRUE DO
 			READ comm_file (cmd)
             IF SUB_STR(cmd, 1, 6) = 'curpos' THEN
                 -- Get current position
                 cpose = CURPOS(0, 0)
                 -- Format the Pose Data as a String
-                CNV_REAL_STR(cpose.x, 2, 3, temp_str)
+                CNV_REAL_STR(cpose.x, 3, 3, temp_str)
                 resp = temp_str + ','
-                CNV_REAL_STR(cpose.y, 2, 3, temp_str)
+                CNV_REAL_STR(cpose.y, 3, 3, temp_str)
                 resp = resp + temp_str + ','
-                CNV_REAL_STR(cpose.z, 2, 3, temp_str)
+                CNV_REAL_STR(cpose.z, 3, 3, temp_str)
                 resp = resp + temp_str + ','
-                CNV_REAL_STR(cpose.w, 2, 3, temp_str)
+                CNV_REAL_STR(cpose.w, 3, 3, temp_str)
                 resp = resp + temp_str + ','
-                CNV_REAL_STR(cpose.p, 2, 3, temp_str)
+                CNV_REAL_STR(cpose.p, 3, 3, temp_str)
                 resp = resp + temp_str + ','
-                CNV_REAL_STR(cpose.r, 2, 3, temp_str)
+                CNV_REAL_STR(cpose.r, 3, 3, temp_str)
                 resp = resp + temp_str  
                 -- Send Pose String over Socket
                 WRITE comm_file (resp)
             ENDIF
         ENDWHILE
+
+        -- Close the Connection
+        WRITE('Disconnecting...', cr)
+        MSG_DISCO('S8:', cr)
+        WRITE('Done.', cr)
     ENDIF 
 END POSE_SERVER
