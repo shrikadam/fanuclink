@@ -33,11 +33,11 @@ In this setup, Robot acts as Socket Server and Python Application as Client. Fol
     - Set ```$SERVER_PORT``` -> PORT_NUM (Port Number to be used for Socket Messaging)
     - If you want to communicate with UDP instead of TCP/IP, set ```$USE_UDP``` -> TRUE
 
-For more information, refer to the section 10.3.2 of [Fanuc Ethernet Function Operator's Manual](https://drive.google.com/file/d/1mSqrSySawRiNfP9QWvAWjzDXuZ0T8baQ/view?usp=drive_link)
+For more information, refer to the section 10.3.2 of [Fanuc Ethernet Function Operator's Manual](docs/B-82974EN_04_Ethernet_Operators_Manual.PDF)
 
 ### Build
 In ROBOGUIDE Window,
-- Go to Project -> Add Files. Select and Open the .ls and .kl file from the Repo. The files can be found in the left pane at Workcell -> Robot Controllers -> Robot Controller1 -> Files
+- Go to Project -> Add Files. Select and Open the .ls and .kl file from the driver directory. The files can be found in the left pane at Workcell -> Robot Controllers -> Robot Controller1 -> Files
 - Right click .kl file and Build the Karel Program
 - Right click .ls file and Build the Robot Program
 
@@ -51,7 +51,7 @@ In a Windows Terminal, run
 python client.py
 ``` 
 <p align="center">
-<img src="screencast.gif" width="720">
+<img src="docs/screencast.gif" width="720">
 </p>
 
 ## Real Robot
@@ -59,6 +59,6 @@ python client.py
 Coming Soon...
 
 ### References
-[Fanuc Ethernet Function Operator's Manual](https://drive.google.com/file/d/1mSqrSySawRiNfP9QWvAWjzDXuZ0T8baQ/view?usp=drive_link)
+[Fanuc Ethernet Function Operator's Manual](docs/B-82974EN_04_Ethernet_Operators_Manual.PDF)
 
-[Fanuc Karel Reference Manual Rev H](https://drive.google.com/file/d/1dchHFF6haihQ2uItWrMn0E2FbHzAJBOG/view?usp=drive_link)
+[Fanuc Karel Reference Manual Rev H](docs/MARRC75KR07091E_Rev_H_Karel_Reference_Manual.pdf)
