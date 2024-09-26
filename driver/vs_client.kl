@@ -1,0 +1,73 @@
+PROGRAM VS_CLIENT
+------------------------------------------------------------------------------------------
+%STACKSIZE = 4000
+%NOLOCKGROUP
+%NOPAUSE = ERROR + COMMAND + TPENABLE
+%ENVIRONMENT flbt
+%ENVIRONMENT strng
+------------------------------------------------------------------------------------------
+VAR 
+    entry       : INTEGER
+    status      : INTEGER
+    resp        : STRING[254]
+    comm_file   : FILE 
+	cmd			: STRING[128]
+    temp_str    : STRING[254]
+    cpose       : XYZWPR
+    ref_posns   : INTEGER
+    stat        : INTEGER
+    dx          : REAL
+    dy          : REAL
+    dz          : REAL
+------------------------------------------------------------------------------------------
+BEGIN 
+    -- Clear TP Screen
+    WRITE(CHR(128), CHR(137))
+    FORCE_SPMENU(TP_PANEL, SPI_TPUSER, 1)
+    WRITE('Started TCP/IP Client Program...', cr)
+
+    -- Set the Server Port
+    SET_VAR(entry, '*SYSTEM*', '%HOSTS_CFG[6].$SERVER_PORT', 30000, status)
+    WRITE('Connecting to Server...', cr)
+
+    -- Clean Start Server Tag
+    MSG_DISCO('C6:', status)
+    CLOSE FILE comm_file
+
+    -- Connect to Client
+    SET_FILE_ATR(comm_file, ATR_IA)
+    MSG_CONNECT('C6:', status)
+
+    IF status = 0 THEN
+        -- Accept the Connection
+        WRITE('Server Connection Accepted.', cr)
+        OPEN FILE comm_file('rw', 'C6:')
+        WRITE comm_file ('Hello from the Robot!')
+
+        ref_posns = 0
+
+        WHILE (ref_posns < 4) DO
+            WAIT FOR (FLG[3] = ON)
+            WRITE comm_file ('capture')
+            FLG[3] = OFF
+            ref_posns = ref_posns + 1
+        ENDWHILE
+
+        WAIT FOR (FLG[5] = ON)
+        WRITE('Starting DPM...', cr)
+        WRITE comm_file ('start_dpm')
+
+        WHILE (FLG[5] = ON) DO
+            READ comm_file (dx, dy, dz)
+            stat = 0
+	        SET_VAR(0, '*SYSTEM*', '$DPM_SCH[1].$GRP[1].$OFS[1].$INI_OFS', dx, stat)
+            SET_VAR(0, '*SYSTEM*', '$DPM_SCH[1].$GRP[1].$OFS[2].$INI_OFS', dy, stat)
+            SET_VAR(0, '*SYSTEM*', '$DPM_SCH[1].$GRP[1].$OFS[3].$INI_OFS', dz, stat)
+        ENDWHILE
+
+        -- Close the Connection
+        WRITE('Disconnecting...', cr)
+        MSG_DISCO('C6:', status)
+        WRITE('Done.', cr)
+    ENDIF 
+END VS_CLIENT
