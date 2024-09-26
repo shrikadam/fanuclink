@@ -9,16 +9,18 @@ PROGRAM VS_CLIENT
 VAR 
     entry       : INTEGER
     status      : INTEGER
-    resp        : STRING[254]
     comm_file   : FILE 
 	cmd			: STRING[128]
-    temp_str    : STRING[254]
     cpose       : XYZWPR
     ref_posns   : INTEGER
     stat        : INTEGER
+    lrpos_str   : STRING[128]
     dx          : REAL
     dy          : REAL
     dz          : REAL
+    dw          : REAL
+    dp          : REAL
+    dr          : REAL
 ------------------------------------------------------------------------------------------
 BEGIN 
     -- Clear TP Screen
@@ -35,34 +37,41 @@ BEGIN
     CLOSE FILE comm_file
 
     -- Connect to Client
-    SET_FILE_ATR(comm_file, ATR_IA)
+    -- SET_FILE_ATR(comm_file, ATR_IA)
+    SET_FILE_ATR(comm_file, ATR_UF)
     MSG_CONNECT('C6:', status)
 
     IF status = 0 THEN
         -- Accept the Connection
         WRITE('Server Connection Accepted.', cr)
         OPEN FILE comm_file('rw', 'C6:')
-        WRITE comm_file ('Hello from the Robot!')
+        FLG[2] = ON
+        -- WRITE comm_file ('Hello from the Robot!')
 
-        ref_posns = 0
+        -- ref_posns = 0
 
-        WHILE (ref_posns < 4) DO
-            WAIT FOR (FLG[3] = ON)
-            WRITE comm_file ('capture')
-            FLG[3] = OFF
-            ref_posns = ref_posns + 1
-        ENDWHILE
+        -- WHILE (ref_posns < 4) DO
+        --     WAIT FOR (FLG[3] = ON)
+        --     WRITE comm_file ('capture')
+        --     FLG[3] = OFF
+        --     ref_posns = ref_posns + 1
+        --     CNV_INT_STR(ref_posns, 1, 0, lrpos_str)
+        --     WRITE('Captured at position > ', lrpos_str, cr)
+        -- ENDWHILE
 
         WAIT FOR (FLG[5] = ON)
+        WRITE comm_file (42)
         WRITE('Starting DPM...', cr)
-        WRITE comm_file ('start_dpm')
 
         WHILE (FLG[5] = ON) DO
-            READ comm_file (dx, dy, dz)
+            READ comm_file (dx, dy, dz, dw, dp, dr)
             stat = 0
 	        SET_VAR(0, '*SYSTEM*', '$DPM_SCH[1].$GRP[1].$OFS[1].$INI_OFS', dx, stat)
             SET_VAR(0, '*SYSTEM*', '$DPM_SCH[1].$GRP[1].$OFS[2].$INI_OFS', dy, stat)
             SET_VAR(0, '*SYSTEM*', '$DPM_SCH[1].$GRP[1].$OFS[3].$INI_OFS', dz, stat)
+            SET_VAR(0, '*SYSTEM*', '$DPM_SCH[1].$GRP[1].$OFS[4].$INI_OFS', dw, stat)
+            SET_VAR(0, '*SYSTEM*', '$DPM_SCH[1].$GRP[1].$OFS[5].$INI_OFS', dp, stat)
+            SET_VAR(0, '*SYSTEM*', '$DPM_SCH[1].$GRP[1].$OFS[6].$INI_OFS', dr, stat)
         ENDWHILE
 
         -- Close the Connection
