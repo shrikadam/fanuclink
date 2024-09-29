@@ -5,6 +5,8 @@ PROGRAM VS_CLIENT
 %NOPAUSE = ERROR + COMMAND + TPENABLE
 %ENVIRONMENT flbt
 %ENVIRONMENT strng
+%ENVIRONMENT regope
+%COMMENT = 'Reg-Ops'
 ------------------------------------------------------------------------------------------
 VAR 
     entry       : INTEGER
@@ -14,13 +16,19 @@ VAR
     cpose       : XYZWPR
     ref_posns   : INTEGER
     stat        : INTEGER
-    lrpos_str   : STRING[128]
+    temp_str   : STRING[128]
     dx          : REAL
     dy          : REAL
     dz          : REAL
     dw          : REAL
     dp          : REAL
     dr          : REAL
+    lrx          : REAL
+    lry          : REAL
+    lrz          : REAL
+    lrw          : REAL
+    lrp          : REAL
+    lrr          : REAL
 ------------------------------------------------------------------------------------------
 BEGIN 
     -- Clear TP Screen
@@ -41,6 +49,14 @@ BEGIN
     SET_FILE_ATR(comm_file, ATR_UF)
     MSG_CONNECT('C6:', status)
 
+    cpose.x = 0
+    cpose.y = 0
+    cpose.z = 0
+    cpose.w = 0
+    cpose.p = 0
+    cpose.r = 0
+    SET_POS_REG(7, cpose, stat)
+
     IF status = 0 THEN
         -- Accept the Connection
         WRITE('Server Connection Accepted.', cr)
@@ -48,16 +64,27 @@ BEGIN
         FLG[2] = ON
         -- WRITE comm_file ('Hello from the Robot!')
 
-        -- ref_posns = 0
+        ref_posns = 0
 
-        -- WHILE (ref_posns < 4) DO
-        --     WAIT FOR (FLG[3] = ON)
-        --     WRITE comm_file ('capture')
-        --     FLG[3] = OFF
-        --     ref_posns = ref_posns + 1
-        --     CNV_INT_STR(ref_posns, 1, 0, lrpos_str)
-        --     WRITE('Captured at position > ', lrpos_str, cr)
-        -- ENDWHILE
+        WHILE (ref_posns < 3) DO
+            WAIT FOR (FLG[3] = ON)
+            WRITE comm_file (31)
+            FLG[3] = OFF
+            ref_posns = ref_posns + 1
+            CNV_INT_STR(ref_posns, 1, 0, temp_str)
+            WRITE('Captured at position > ', temp_str, cr)
+        ENDWHILE
+
+        WRITE comm_file (41)
+        READ comm_file (lrx, lry, lrz, lrw, lrp, lrr)
+        cpose.x = lrx
+        cpose.y = lry
+        cpose.z = lrz
+        cpose.w = lrw
+        cpose.p = lrp
+        cpose.r = lrr
+        SET_POS_REG(7, cpose, stat)
+        FLG[4] = ON
 
         WAIT FOR (FLG[5] = ON)
         WRITE comm_file (42)

@@ -12,7 +12,7 @@ def main():
     SERVER_PORT = 30000
     i = 0
     ctrl_freq = 125
-    weave_freq = 1
+    weave_freq = 0.5
     ampl = 10
     cycle_freq = weave_freq / ctrl_freq
 
@@ -34,7 +34,13 @@ def main():
             if data:
                 # Unpack the binary data to an integer
                 trigger = struct.unpack('<I', data)[0]  # '!I' for big-endian unsigned int, '<I' otherwise
-                if(trigger==42):
+                if(trigger==31):
+                    print("Capturing...")
+                elif(trigger==41):
+                    print("Sending LR Ref Transform")
+                    ref = struct.pack('<6f', 0.0, 20.0, 0.0, 0.0, 0.0, 0.0)
+                    client_socket.sendall(ref)
+                elif(trigger==42):
                     print("Starting DPM...")
                     while True:
                         dy = calculate_sine_offset(i, cycle_freq, ampl)
@@ -42,6 +48,8 @@ def main():
                         client_socket.sendall(offs)
                         i = i + 1
                         time.sleep(0.008)
+                elif not trigger: 
+                    print("Unknown trigger!")
             # msg = client_socket.recv(1024).decode()
             # if(msg=="capture"):
             #     print("Capturing...")
