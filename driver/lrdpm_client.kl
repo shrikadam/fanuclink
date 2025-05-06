@@ -1,0 +1,225 @@
+PROGRAM LRDPM_CLIENT
+------------------------------------------------------------------------------------------
+%STACKSIZE = 4000
+%NOLOCKGROUP
+%NOPAUSE = ERROR + COMMAND + TPENABLE
+%ENVIRONMENT flbt
+%ENVIRONMENT regope
+------------------------------------------------------------------------------------------
+VAR 
+    status      : INTEGER
+	entry		: INTEGER
+    comm_file   : FILE
+    trig_reg    : INTEGER
+	t_start		: INTEGER
+    t_reset     : INTEGER
+    t_cap       : INTEGER
+    t_ref       : INTEGER
+    t_start_dpm : INTEGER
+    t_pause_dpm : INTEGER
+    t_stop_dpm  : INTEGER
+	t_stop		: INTEGER
+    TRIG_HSPO   : INTEGER
+    cpose       : XYZWPR
+    lrpose      : XYZWPR
+    lr_pos_reg  : INTEGER
+    ref_posns   : INTEGER
+    count_str   : STRING[64]
+	sock_resp	: INTEGER
+    s1          : STRING[1]
+    offs_rate   : REAL
+    dx          : REAL
+    dy          : REAL
+    dz          : REAL
+    dw          : REAL
+    dp          : REAL
+    dr          : REAL
+    lrx         : REAL
+    lry         : REAL
+    lrz         : REAL
+    lrw         : REAL
+    lrp         : REAL
+    lrr         : REAL
+------------------------------------------------------------------------------------------
+BEGIN 
+	-- Clear TP Screen
+    WRITE(CHR(128), CHR(137))
+    FORCE_SPMENU(TP_PANEL, SPI_TPUSER, 1)
+    WRITE('Started MATISSE VS Client Program...', cr)
+    WRITE('Connecting to Server...', cr)
+
+    -- Zero Initialize DPM Offsets
+    SET_VAR(entry,'*system*','$DPM_SCH[1].$GRP[1].$OFS[1].$ini_OFS',0.0,status)	
+    SET_VAR(entry,'*system*','$DPM_SCH[1].$GRP[1].$OFS[2].$ini_OFS',0.0,status)
+    SET_VAR(entry,'*system*','$DPM_SCH[1].$GRP[1].$OFS[3].$ini_OFS',0.0,status)
+    SET_VAR(entry,'*system*','$DPM_SCH[1].$GRP[1].$OFS[4].$ini_OFS',0.0,status)	
+    SET_VAR(entry,'*system*','$DPM_SCH[1].$GRP[1].$OFS[5].$ini_OFS',0.0,status)
+    SET_VAR(entry,'*system*','$DPM_SCH[1].$GRP[1].$OFS[6].$ini_OFS',0.0,status)
+
+    -- Zero Initialize DPM Offsets
+    lrpose.x = 0.0
+    lrpose.y = 0.0
+    lrpose.z = 0.0
+    lrpose.w = 0.0
+    lrpose.p = 0.0
+    lrpose.r = 0.0
+    SET_POS_REG(lr_pos_reg, lrpose, status)
+
+    -- TODO: Enable HSPO 
+    -- SET_VAR(entry,'*system*','$MCGR_CFG.$ENABLE',1,status)
+
+    -- Define Trigger Data
+    trig_reg = 1
+	t_start = 11
+    t_reset = 21
+    t_cap = 31
+    t_ref = 32
+    t_start_dpm = 41
+    t_pause_dpm = 42
+    t_stop_dpm = 43
+	t_stop = 12
+
+    -- Define Ref Position Register
+    lr_pos_reg = 6
+
+    -- Initialize Trigger to 0
+    TRIG_HSPO = 0
+    DELAY(1)
+
+    -- Clean Start Server Tag
+    MSG_DISCO('C6:', status)
+    CLOSE FILE comm_file
+
+    -- Connect to Client
+    SET_FILE_ATR(comm_file, ATR_UF)
+    MSG_CONNECT('C6:', status)
+    OPEN FILE comm_file('rw', 'C6:')
+
+    IF status = 0 THEN
+        -- Accept the Connection
+        WRITE('Server Connection Accepted.', cr)
+        
+        FLG[1] = ON
+		-- SET_INT_REG(trig_reg, t_start, status)
+        TRIG_HSPO = t_start     -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+        DELAY(1)
+
+        WHILE (FLG[1] = ON) DO
+            WRITE('Starting Routine...', cr)
+            BYTES_AHEAD(comm_file, entry, status)
+            -- WRITE('@Start: Bytes left in Buffer', entry, cr)
+            REPEAT
+                BYTES_AHEAD(comm_file, entry, status)
+                IF (entry = 0) THEN
+                    status = 282
+                ENDIF
+                IF (entry >= 1) THEN
+                    READ comm_file(s1::1)
+                    status = io_status(comm_file)
+                ENDIF
+            UNTIL status <> 0
+
+            BYTES_AHEAD(comm_file, entry, status)
+            -- WRITE('@Post-cleanup: Bytes left in Buffer', entry, cr)
+            ------------------------------- Local Referencing -------------------------------
+            -- Capture Referencing Data
+            ref_posns = 0
+            WHILE (ref_posns < 3) DO
+                WAIT FOR (FLG[3] = ON)
+                -- SET_INT_REG(trig_reg, t_cap, status)
+                TRIG_HSPO = t_cap    -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+                DELAY(1000)
+                cpose = CURPOS(0, 0)  
+                WRITE comm_file(cpose.x, cpose.y, cpose.z, cpose.w, cpose.p, cpose.r)
+                READ comm_file(sock_resp)
+                FLG[3] = OFF
+                -- SET_INT_REG(trig_reg, t_reset, status)
+                TRIG_HSPO = t_reset     -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+                DELAY(1)
+                ref_posns = ref_posns + 1
+                CNV_INT_STR(ref_posns, 1, 0, count_str)
+                WRITE('Ref Data captured at position', count_str, cr)
+            ENDWHILE
+
+            DELAY(100)
+            -- Set LR Transform
+            -- lrpose = CURPOS(0, 0)
+            -- SET_INT_REG(trig_reg, t_ref, status)
+            
+            TRIG_HSPO = t_ref     -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+            DELAY(100)
+            BYTES_AHEAD(comm_file, entry, status)
+            READ comm_file (lrx, lry, lrz, lrw, lrp, lrr)
+            lrpose.x = lrx
+            lrpose.y = lry
+            lrpose.z = lrz
+            lrpose.w = lrw
+            lrpose.p = lrp
+            lrpose.r = lrr
+            SET_POS_REG(lr_pos_reg, lrpose, status)
+            FLG[4] = ON
+            -- SET_INT_REG(trig_reg, t_reset, status)
+            TRIG_HSPO = t_reset     -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+            DELAY(1)
+            WRITE('LR Transform Set!', cr)
+            
+            ------------------------------- Dyn Path Modification -------------------------------
+
+            WAIT FOR (FLG[5] = ON)
+            -- SET_INT_REG(trig_reg, t_start_dpm, status)
+            TRIG_HSPO = t_start_dpm     -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+            DELAY(1)
+            WRITE('Starting DPM...', cr)
+
+            -- DPM Loop
+            WHILE (FLG[5] = ON) DO
+                READ comm_file (dx, dy, dz, dw, dp, dr)
+                offs_rate = 0.02 * ABS(dx)
+                IF offs_rate > 0.3 THEN
+                    offs_rate = 0.3
+                ENDIF
+                SET_VAR(entry, '*SYSTEM*', '$DPM_SCH[1].$GRP[1].$OFS[1].$MAX_INC', offs_rate, status)
+                SET_VAR(entry, '*SYSTEM*', '$DPM_SCH[1].$GRP[1].$OFS[1].$INI_OFS', dx, status)
+                SET_VAR(entry, '*SYSTEM*', '$DPM_SCH[1].$GRP[1].$OFS[2].$INI_OFS', dy, status)
+                SET_VAR(entry, '*SYSTEM*', '$DPM_SCH[1].$GRP[1].$OFS[3].$INI_OFS', dz, status)
+                SET_VAR(entry, '*SYSTEM*', '$DPM_SCH[1].$GRP[1].$OFS[4].$INI_OFS', dw, status)
+                SET_VAR(entry, '*SYSTEM*', '$DPM_SCH[1].$GRP[1].$OFS[5].$INI_OFS', dp, status)
+                SET_VAR(entry, '*SYSTEM*', '$DPM_SCH[1].$GRP[1].$OFS[6].$INI_OFS', dr, status)
+            ENDWHILE
+            
+            WRITE('Stopped DPM.', cr)
+
+            -- BYTES_AHEAD(comm_file, entry, status)
+            -- WRITE('@Pre-cleanup: Bytes left in Buffer', entry, cr)
+
+            REPEAT
+                BYTES_AHEAD(comm_file, entry, status)
+                IF (entry = 0) THEN
+                    status = 282
+                ENDIF
+                IF (entry >= 1) THEN
+                    READ comm_file(s1::1)
+                    status = io_status(comm_file)
+                ENDIF
+            UNTIL status <> 0
+
+            -- BYTES_AHEAD(comm_file, entry, status)
+            -- WRITE('@Post-cleanup: Bytes left in Buffer', entry, cr)
+
+            -- SET_INT_REG(trig_reg, t_stop_dpm, status)
+            TRIG_HSPO = t_stop_dpm     -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+            DELAY(1)
+            READ comm_file(sock_resp)
+        ENDWHILE
+
+        CLOSE FILE comm_file
+        -- Close the Connection
+        WRITE('Disconnecting...', cr)
+        MSG_DISCO('C6:', status)
+        WRITE('Done.', cr)
+		-- SET_INT_REG(trig_reg, t_stop, status)
+        TRIG_HSPO = t_stop     -- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+        DELAY(1)
+    ENDIF 
+
+END LRDPM_CLIENT
